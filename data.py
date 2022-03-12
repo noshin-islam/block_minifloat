@@ -49,14 +49,14 @@ def get_data(dataset, data_path, batch_size):
             train_set,
             batch_size=batch_size,
             shuffle=True,
-            num_workers=8,
+            num_workers=0,
             pin_memory=True
         ),
         'test': torch.utils.data.DataLoader(
             test_set,
             batch_size=batch_size,
             shuffle=False,
-            num_workers=8,
+            num_workers=0,
             pin_memory=True
         )
     }

@@ -66,7 +66,7 @@ def block_BG2(data, factors, ebit, func):
     data = F.pad(input=data, pad=padding, mode='constant', value=0)
     dim_pad = data.size()
 
-    # unfold
+    # unfold ---splitting the data into blocks/tiles???
     data_unf = data.unfold(0, fact[0], fact[0]).unfold(1, fact[1], fact[1])
 
     # calc shift_exponent for block
@@ -168,6 +168,8 @@ def block_BFP(data, ebit, tensor_type, block_factor, func):
     return shift_exponent
 
 #"""
+
+#used to compute max exponent
 
 def block_design(data, tile, tensor_type, func):
 
