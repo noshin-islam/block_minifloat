@@ -29,13 +29,13 @@ def block_minifloat_quantize(x, number, rounding="stochastic", tensor_type="x"):
     mean_func = lambda x, dim: torch.mean(x, dim)
     max_func = lambda x, dim: torch.max(x, dim)[0]
 
-    # compute max exponent
+    # compute max exponent for the block
     max_exponent = block_design(x, number.tile, tensor_type, max_func) 
 
-    # log
+    # log 
     if number.man == 0:
         i = x * 2**(-max_exponent + number.bias)
-        sgn = torch.sign(i)
+        sgn = torch.sign(i) # makes the entries of i binary
         #i = torch.log2(torch.abs(i)+1e-60)
         i = logr2(torch.abs(i)+1e-60)
         add_r_(i)
