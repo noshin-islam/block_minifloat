@@ -2,6 +2,7 @@
 Code modified from Qpytorch repository. https://github.com/Tiiiger/QPyTorch/blob/master
 """
 
+import sys
 import torch
 from torch.optim import Optimizer, SGD, Adam
 import collections
@@ -60,6 +61,7 @@ class OptimLP(Optimizer):
             raise NotImplementedError("Only supporting Adam and SGD for now. ")
 
         if self.acc_quant != None:
+            #making a weight_acc dictionary that stores the high precision weights of every layer (for record)
             self.weight_acc = {}
             for group in self.param_groups:
                 for p in group['params']:
@@ -71,10 +73,14 @@ class OptimLP(Optimizer):
         Quantizes gradient and momentum before stepping. Quantizes gradient accumulator and weight after stepping.
         """
 
+        # print("Param group: ", self.param_groups)
+
         # quantize gradient
         if not self.grad_quant is None:
             for group in self.param_groups:
                 for p in group['params']:
+                    # print(f"p: {len(p)}")
+                    # print(f"p.grad: {len(p.grad)}")                    
                     p.grad.data = self.grad_quant(p.grad.data*self.grad_scaling)
 
         # switch acc into weight before stepping
@@ -83,13 +89,14 @@ class OptimLP(Optimizer):
                 for p in group['params']:
                     p.data = self.weight_acc[p].data
 
-        loss = self.optim.step()
+        loss = self.optim.step() #updating the weights
 
         # switch weight into acc after stepping and quantize
         if not self.acc_quant is None:
             for group in self.param_groups:
                 for p in group['params']:
                     p.data = self.weight_acc[p].data = self.acc_quant(p.data).data
+                    #this line just quantized the new updated weights (p.data) and then updated that to the weight_acc dict
 
 
         # quantize weight from acc

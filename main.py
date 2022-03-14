@@ -105,6 +105,7 @@ if __name__ == "__main__":
                 tile=args.tile, flush_to_zero=args.flush_to_zero) 
         print("{:10}: {}".format(num, number_dict[num]))
 
+    #forward_number is a block minifloat object, backward number is already None, so no backward quantisation is happening
     weight_quantizer = quantizer(forward_number=number_dict["weight"],
                                 forward_rounding=args.weight_rounding)
     grad_quantizer   = quantizer(forward_number=number_dict["grad"],
