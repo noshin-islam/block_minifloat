@@ -32,7 +32,7 @@ def block_minifloat_quantize(x, number, rounding="stochastic", tensor_type="x"):
     # compute max exponent for the block
     max_exponent = block_design(x, number.tile, tensor_type, max_func) 
 
-    # log 
+    # log representation for m=0 case
     if number.man == 0:
         i = x * 2**(-max_exponent + number.bias)
         sgn = torch.sign(i) # makes the entries of i binary
@@ -48,7 +48,7 @@ def block_minifloat_quantize(x, number, rounding="stochastic", tensor_type="x"):
         out = i * 2**(max_exponent-number.bias)
         return out
     
-    # fixed
+    # fixed = integer
     elif number.exp == 0:
         bits = number.man + 1
         i = x * 2**(-max_exponent + number.bias + bits - 1)
@@ -134,6 +134,8 @@ def quantizer(forward_number=None, backward_number=None,
     Returns:
         A quantization function as specified (torch.Tensor -> torch.Tensor)
     """
+    # import pdb; pdb.set_trace()
+
     if forward_number is not None:
         if forward_number.exp == -1 or forward_number.man == -1:
             forward_number = None

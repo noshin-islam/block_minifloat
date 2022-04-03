@@ -106,6 +106,7 @@ if __name__ == "__main__":
         print("{:10}: {}".format(num, number_dict[num]))
 
     #forward_number is a block minifloat object, backward number is already None, so no backward quantisation is happening
+    #this if for the four quantizers that are used for the optimiser
     weight_quantizer = quantizer(forward_number=number_dict["weight"],
                                 forward_rounding=args.weight_rounding)
     grad_quantizer   = quantizer(forward_number=number_dict["grad"],
@@ -114,8 +115,17 @@ if __name__ == "__main__":
                                 forward_rounding=args.momentum_rounding)
     acc_quantizer = quantizer(forward_number=number_dict["acc"],
                                 forward_rounding=args.acc_rounding)
+
+    # import pdb; pdb.set_trace()
+    # this is the model's quantizer. forward and backward quant both set, and entered into the model.
+    # quantisation of activation and error
+
     acc_err_quant = lambda : Quantizer(number_dict["activate"], number_dict["error"],
                                         args.activate_rounding, args.error_rounding)
+
+    #remove backward quant   -
+    # acc_err_quant = lambda : Quantizer(forward_number=number_dict["activate"],
+    #                                     forward_rounding=args.activate_rounding)
 
     # Build model
     print('Model: {}'.format(args.model))
@@ -216,6 +226,13 @@ if __name__ == "__main__":
             
             utils.bn_update(loaders['train'], model)
             test_res = utils.run_epoch(loaders['test'], model, criterion, phase="eval") 
+
+            ###added in for recording evals - wk 5
+            if epoch == (args.epochs - 1):
+                loss_eval = test_res['loss']
+                acc_eval = test_res['accuracy']
+                with open("results.txt", 'w') as f: f.write("loss= {}, accuracy= {}".format(loss_eval, acc_eval))
+
 
             time_pass = time.time() - time_ep
             test_res['time_pass'] = time_pass
