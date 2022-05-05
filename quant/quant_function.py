@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import numpy as np
 from .number import BlockMinifloat, Number
 from .block_design import block_design
+# from quant import *
 
 
 __all__ = ['block_minifloat_quantize', "quantizer"]
@@ -21,7 +22,10 @@ def add_r_(data):
     data.add_(r)
 
 
-def block_minifloat_quantize(x, number, rounding="stochastic", tensor_type="x"):
+def block_minifloat_quantize(x, number, rounding="stochastic", tensor_type="x", k_exp=0):
+
+    # x is the data we want to conv to BM
+    # num is the BM format we have selected
 
     assert isinstance(x, torch.Tensor), "x is not a single precision Floating Point Tensor"
 
@@ -30,12 +34,15 @@ def block_minifloat_quantize(x, number, rounding="stochastic", tensor_type="x"):
     max_func = lambda x, dim: torch.max(x, dim)[0]
 
     # compute max exponent for the block
-    max_exponent = block_design(x, number.tile, tensor_type, max_func) 
+    # print("quant func data: ", x)
+    max_exponent = block_design(x, number.tile, tensor_type, max_func, k_exp) 
+    
+    # print("max exponent with shift: ", max_exponent)
 
     # log representation for m=0 case
     if number.man == 0:
-        i = x * 2**(-max_exponent + number.bias)
-        sgn = torch.sign(i) # makes the entries of i binary
+        i = x * 2**(-max_exponent + number.bias) #representing the number
+        sgn = torch.sign(i) # returns the sign of i
         #i = torch.log2(torch.abs(i)+1e-60)
         i = logr2(torch.abs(i)+1e-60)
         add_r_(i)
@@ -63,6 +70,8 @@ def block_minifloat_quantize(x, number, rounding="stochastic", tensor_type="x"):
     
     # minifloat
     else:
+        #offset is the exponent
+        # number.emax = number.emax 
         offset = max_exponent - number.emax
 
         # shared exponent shifting
@@ -81,6 +90,10 @@ def block_minifloat_quantize(x, number, rounding="stochastic", tensor_type="x"):
         # handle subnormal and normal quantization
         emin = number.emin 
         emax = number.emax # number.of_emax
+
+        # emin = number.emin * (2**k_exp)
+        # emax = number.emax * (2**k_exp)
+
         esbn = 2**(emin+1)
         lsbn = 2**(number.emax)
         mval = 2**(number.man)
@@ -113,7 +126,7 @@ def block_minifloat_quantize(x, number, rounding="stochastic", tensor_type="x"):
         return out
 
 
-def quantizer(forward_number=None, backward_number=None,
+def quantizer(k, forward_number=None, backward_number=None,
               forward_rounding="stochastic", backward_rounding="stochastic",
               clamping_grad_zero=False, backward_hooks=[]):
     """
@@ -149,11 +162,12 @@ def quantizer(forward_number=None, backward_number=None,
     for num in [forward_number, backward_number]:
         if num != None: assert isinstance(num, Number)
 
+    # print("quantiser k value: ", k)
    
     # forward and backward quantisation functions
     tensor_type = "w" if backward_number is None else "x"
-    forward_quant = lambda x, num, rd, tt: block_minifloat_quantize(x, num, rd, tt)
-    backward_quant = lambda x, num, rd, tt: block_minifloat_quantize(x, num, rd, tt)  
+    forward_quant = lambda x, num, rd, tt, k: block_minifloat_quantize(x, num, rd, tt, k)
+    backward_quant = lambda x, num, rd, tt, k: block_minifloat_quantize(x, num, rd, tt, k)  
 
 
     class Rounding(torch.autograd.Function):
@@ -161,7 +175,7 @@ def quantizer(forward_number=None, backward_number=None,
         def forward(self, x):
             if forward_number==None: return x
 
-            out = forward_quant(x.contiguous(), forward_number, forward_rounding, tensor_type)
+            out = forward_quant(x.contiguous(), forward_number, forward_rounding, tensor_type, k)
 
             return out.clone()
 
@@ -172,7 +186,7 @@ def quantizer(forward_number=None, backward_number=None,
                     grad_input = grad_output
                 else:
                     grad_input = backward_quant(grad_output.contiguous(), backward_number, 
-                        backward_rounding, tensor_type)
+                        backward_rounding, tensor_type, k)
             else:
                 grad_input = None
 
@@ -181,3 +195,30 @@ def quantizer(forward_number=None, backward_number=None,
     return Rounding.apply
 
 
+###TO DO - make a layerwise_weight_quant() function, that will follow the pseudocode and do the layer wise quantisation. Instead of reduced_precision_converter function, I will call the quantizer function, to convert to lower precision.
+
+# def layerwise_quant(model, forward_number=None, backward_number=None,
+#               forward_rounding="stochastic", backward_rounding="stochastic",
+#               clamping_grad_zero=False, backward_hooks=[]):
+#     for layer in model.modules():
+#         if isinstance(layer, nn.Conv2d):
+#             #for convolution layers - let's try BM6
+#             print("Conv layer detected")
+#             # print(layer.weight)
+#             layer_weight = layer.weight
+#             bm_quant = BlockMinifloat(exp=2, man=3, tile=48, flush_to_zero= False)  #BM6
+#             quant_func = quantizer(forward_number= bm_quant, forward_rounding= "stochastic")
+
+#         # elif isinstance(layer, nn.MaxPool2d):
+#         #     print("Maxpool detected")
+#         # elif isinstance(layer, nn.ReLU):
+#         #     print("ReLu detected")
+#         # elif isinstance(layer, nn.Linear):
+#         #     print("Linear detected")
+#         elif isinstance(layer, nn.Dropout) or isinstance(layer, nn.ReLU) or isinstance(layer, nn.Linear):
+#             print("Fully Connected Layer detected")
+#         # elif isinstance(layer, nn.BatchNorm2d):
+#         #     print("Batchnorm2d detected")
+#         else:
+#             print("nope")
+#     return 

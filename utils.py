@@ -45,6 +45,8 @@ def run_epoch(loader, model, criterion, optimizer=None,
     loss_sum = 0.0
     correct = 0.0
 
+    # import pdb; pdb.set_trace()
+    
     if phase=="train": model.train()
     elif phase=="eval": model.eval()
 
@@ -52,21 +54,30 @@ def run_epoch(loader, model, criterion, optimizer=None,
 
     ttl = 0
     with torch.autograd.set_grad_enabled(phase=="train"):
-        for i, (input, target) in enumerate(loader):
-            input = input.to(device=device)
-            target = target.to(device=device)
-            output = model(input)
-            loss = criterion(output, target)
+        with torch.autograd.detect_anomaly():
+            for i, (input, target) in enumerate(loader):
+                # import pdb; pdb.set_trace()
 
-            loss_sum += loss.cpu().item() * input.size(0)
-            pred = output.data.max(1, keepdim=True)[1]
-            correct += pred.eq(target.data.view_as(pred)).sum()
-            ttl += input.size()[0]
+                input = input.to(device=device)
+                print("INF INPUT ", input.isinf().any())
+                print("NAN INPUT ", input.isnan().any())
+                target = target.to(device=device)
+                output = model(input)
+                print("INF OUTPUT ", output.isinf().any())
+                print("NAN OUTPUT ", output.isnan().any())
+                loss = criterion(output, target)
+                print("INF LOSS ", loss.isinf().any())
+                print("NAN LOSS", loss.isnan().any())
 
-            if phase=="train":
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+                loss_sum += loss.cpu().item() * input.size(0)
+                pred = output.data.max(1, keepdim=True)[1]
+                correct += pred.eq(target.data.view_as(pred)).sum()
+                ttl += input.size()[0]
+
+                if phase=="train":
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
 
     correct = correct.cpu().item()
     return {

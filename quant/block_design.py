@@ -8,7 +8,6 @@ import math
 # block design implementations
 # block_type = "w" weight, "x" activation
 
-
 # calc_padding
 def calc_padding(fold, dim):
     if fold>=dim:
@@ -22,8 +21,11 @@ def calc_padding(fold, dim):
 
 # block entire vector
 def block_V(data, ebit, func):
-    entry = func(torch.abs(data), 0) #.item()
+    
+    entry = func(torch.abs(data), 0) #.item() ----- extracts maximum from each column, but there are no other cols, so its just max w 0
+    
     if entry == 0: return data
+
     shift_exponent = torch.floor(torch.log2(entry+1e-28))
     shift_exponent = torch.clamp(shift_exponent, -2**(ebit-1), 2**(ebit-1)-1)
     return shift_exponent
@@ -34,12 +36,24 @@ def block_V(data, ebit, func):
     #return shift_exponent
 
 
-# block on axis=0
+# block on axis=0  -- block based on row
+# shift exp returned will have same rows as mantissa but 1 as the other dims as each row of mantissa gets one exp
+
 def block_B(data, ebit, func):
-    entry = func(torch.abs(data.view(data.size(0), -1)), 1)#[0] 
+
+    # print(data)
+    entry = func(torch.abs(data.view(data.size(0), -1)), 1)#[0] ####extracts the maximum value present in each column of data.
     shift_exponent = torch.floor(torch.log2(entry+1e-28))
+
+    #clamping the shift exponent between the highest representable values eg, -128 to 127 for 8 bit ebit.
     shift_exponent = torch.clamp(shift_exponent, -2**(ebit-1), 2**(ebit-1)-1)
-    shift_exponent = shift_exponent.view([data.size(0)]+[1 for _ in range(data.dim()-1)])
+
+    shift_exponent = shift_exponent.view([data.size(0)]+[1 for _ in range(data.dim()-1)]) #[no. of rows, 1 , 1, 1, 1, 1, 1 .... 1]
+
+    #example shape of shift_exponent -> [64, 1, 1, 1]
+    # print("Block B shift exp ", shift_exponent)
+    # print("size ", shift_exponent.shape)
+
     return shift_exponent
 
 # block entire tensor
@@ -90,6 +104,9 @@ def block_BG2(data, factors, ebit, func):
 
 # block by some factor on axis=0,1,2 (data_dim=4)
 def block_BG4(data, factors, ebit, func):
+
+    # import pdb; pdb.set_trace()
+
     _dim = data.size()
     assert len(_dim) == 4 
     
@@ -132,19 +149,19 @@ def block_BG4(data, factors, ebit, func):
 def block_BFP(data, ebit, tensor_type, block_factor, func):
     data_dim = data.dim()
 
-    # tile
+    # block_factor = tile
     f0,f1 = int(block_factor),int(block_factor)
 
     # default (-1 means the whole dimension shares one exponent)
     p0,p1,p2 = 1,1,-1 # same as BC
-    
+
     # decode
     if tensor_type == "x":
         if data_dim == 2:
             p0,p1 = f1,f0
         elif data_dim == 4:
             p0,p1,p2 = 1,f0,f1
-    elif tensor_type == "w":
+    elif tensor_type == "w": #no backward quant
         if data_dim == 2:
             p0,p1 = f1,f0
         elif data_dim == 4:
@@ -170,28 +187,39 @@ def block_BFP(data, ebit, tensor_type, block_factor, func):
 #"""
 
 #used to compute max exponent
+#k is the scaled exponent
 
-def block_design(data, tile, tensor_type, func):
+def block_design(data, tile, tensor_type, func, k):
 
-    assert data.dim() <= 4
+    assert data.dim() <= 4 #.dim() returns the dimensionality of the data - 2D or 3D etc
     dim_threshold = 1
-    ebit = 8
-
+    ebit = 8  #exponent bits??
+    # import pdb; pdb.set_trace()
     if tile == -1:
         if data.dim() <= dim_threshold:
             shift_exponent = block_V(data, ebit, func)
         else:
             shift_exponent = block_B(data, ebit, func)
-      
+
+        if (k != 0):
+            shift_exponent = shift_exponent * (2**k)
 
     elif tile == 0:
         shift_exponent = block_B0(data, ebit, func)
+        if (k != 0):
+            shift_exponent = shift_exponent * (2**k)
 
     else:
         if data.dim() <= dim_threshold:
             shift_exponent = block_V(data, ebit, func)
+            # if (k != 0):
+            #     shift_exponent = shift_exponent * (2**k)
         else:
             shift_exponent = block_BFP(data, ebit, tensor_type, tile, func)
+        # print("without exponent scaling: ", shift_exponent)
+        if (k != 0):
+            shift_exponent = shift_exponent * (2**k)
+            # print("with exponent scaling: ", shift_exponent)
 
     return shift_exponent
 

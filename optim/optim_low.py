@@ -40,7 +40,7 @@ class OptimLP(Optimizer):
         assert (isinstance(optim, SGD) or isinstance(optim, Adam))
         super(OptimLP, self).__init__(optim.param_groups, optim.defaults) # place holder
 
-        # python dictionary does not copy by default
+        # python dictionary does not copy by default  --- deepcopy
         self.param_groups = optim.param_groups
         self.optim = optim
 
@@ -50,7 +50,7 @@ class OptimLP(Optimizer):
         self.weight_quant=weight_quant
         self.grad_quant=grad_quant
         self.momentum_quant=momentum_quant
-        self.acc_quant=acc_quant
+        self.acc_quant=acc_quant #acceleration or accuracy?
 
         if isinstance(self.optim, SGD):
             self.momentum_keys = ['momentum_buffer']
@@ -77,6 +77,7 @@ class OptimLP(Optimizer):
 
         # quantize gradient
         if not self.grad_quant is None:
+            # print("GRAD QUANT OPTIM.PY")
             for group in self.param_groups:
                 for p in group['params']:
                     # print(f"p: {len(p)}")
@@ -91,8 +92,11 @@ class OptimLP(Optimizer):
 
         loss = self.optim.step() #updating the weights
 
+        # import pdb; pdb.set_trace()
+
         # switch weight into acc after stepping and quantize
         if not self.acc_quant is None:
+            # print("ACC QUANT OPTIM.PY")
             for group in self.param_groups:
                 for p in group['params']:
                     p.data = self.weight_acc[p].data = self.acc_quant(p.data).data
@@ -101,12 +105,15 @@ class OptimLP(Optimizer):
 
         # quantize weight from acc
         if not self.weight_quant is None:
+            # print("WEIGHT QUANT OPTIM.PY")
             for group in self.param_groups:
                 for p in group['params']:
+                    # print("optim data: ", p.data)
                     p.data = self.weight_quant(p.data).data
 
         # quantize momentum
         if not self.momentum_quant is None:
+            # print("MOMENTUM QUANT OPTIM.PY")
             for group in self.param_groups:
                 if isinstance(self.optim, SGD) and group['momentum'] == 0: continue
                 for p in group['params']:

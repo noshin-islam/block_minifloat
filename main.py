@@ -20,11 +20,15 @@ from optim import OptimLP
 from torch.optim import SGD
 from quant import *
 #from qtorch import FloatingPoint
+from prettytable import PrettyTable
+import sys
+
 
 
 if __name__ == "__main__":
 
     torch.multiprocessing.freeze_support()
+
 
     num_types = ["weight", "activate", "error", "acc", "grad", "momentum"]
 
@@ -57,6 +61,9 @@ if __name__ == "__main__":
                         help='use qtorch floating point quantizer which does not handle denormal numbers')
     parser.add_argument('--gpu', type=str, help='comma separated list of GPU(s) to use')
     parser.add_argument('--output_dir', type=str, default='./checkpoints', help='output directory')
+
+    ###added
+    parser.add_argument('--k', type=int, required=True)
 
     for num in num_types:
         parser.add_argument('--{}-man'.format(num), type=int, default=-1, metavar='N',
@@ -107,20 +114,22 @@ if __name__ == "__main__":
 
     #forward_number is a block minifloat object, backward number is already None, so no backward quantisation is happening
     #this if for the four quantizers that are used for the optimiser
-    weight_quantizer = quantizer(forward_number=number_dict["weight"],
+    # import pdb; pdb.set_trace()
+
+    weight_quantizer = quantizer(args.k, forward_number=number_dict["weight"],
                                 forward_rounding=args.weight_rounding)
-    grad_quantizer   = quantizer(forward_number=number_dict["grad"],
+    grad_quantizer   = quantizer(args.k, forward_number=number_dict["grad"],
                                 forward_rounding=args.grad_rounding)
-    momentum_quantizer = quantizer(forward_number=number_dict["momentum"],
+    momentum_quantizer = quantizer(args.k, forward_number=number_dict["momentum"],
                                 forward_rounding=args.momentum_rounding)
-    acc_quantizer = quantizer(forward_number=number_dict["acc"],
+    acc_quantizer = quantizer(args.k, forward_number=number_dict["acc"],
                                 forward_rounding=args.acc_rounding)
 
     # import pdb; pdb.set_trace()
     # this is the model's quantizer. forward and backward quant both set, and entered into the model.
     # quantisation of activation and error
 
-    acc_err_quant = lambda : Quantizer(number_dict["activate"], number_dict["error"],
+    acc_err_quant = lambda : Quantizer(args.k, number_dict["activate"], number_dict["error"],
                                         args.activate_rounding, args.error_rounding)
 
     #remove backward quant   -
@@ -139,7 +148,51 @@ if __name__ == "__main__":
     if (args.model == "ResNet18LP") or (args.model == "MobileNetV2LP"): 
         model_cfg.kwargs.update({"image_size":224 if args.dataset=="IMAGENET" else 32})
     model = model_cfg.base(*model_cfg.args, num_classes=num_classes, **model_cfg.kwargs)
+
     ##model.cuda()
+    # layer = model.children()
+    # print(layer[0])
+
+    ####### TESTING ##########
+    # i = 1
+    # for layer in model.modules():
+    #     if isinstance(layer, nn.Conv2d):
+    #         print("Conv layer detected")
+    #         # print(layer.weight)
+    #     elif isinstance(layer, nn.Sequential):
+    #         print("Sequential layer detected")
+    #         for layer1 in layer.modules():
+    #             print("INSIDE : ", layer1)
+    #         # print(layer.weight)
+    #     elif isinstance(layer, nn.MaxPool2d):
+    #         print("Maxpool detected")
+    #     elif isinstance(layer, nn.ReLU):
+    #         print("ReLu detected")
+    #     elif isinstance(layer, nn.Linear):
+    #         print("Linear detected")
+    #     elif isinstance(layer, nn.Dropout):
+    #         print("Dropout detected")
+    #     elif isinstance(layer, nn.BatchNorm2d):
+    #         print("Batchnorm2d detected")
+    #     else:
+    #         print("nope")
+        # print(layer)
+        # print("num ", i)
+        # i += 1
+
+    def count_parameters(model):
+        table = PrettyTable(["Modules", "Parameters"])
+        total_params = 0
+        for name, parameter in model.named_parameters():
+            if not parameter.requires_grad: continue
+            params = parameter.numel()
+            table.add_row([name, params])
+            total_params+=params
+        print(table)
+        print(f"Total Trainable Params: {total_params}")
+        return total_params
+        
+    count_parameters(model)
 
     ####
     model.to(device)
@@ -199,12 +252,18 @@ if __name__ == "__main__":
         model.load_state_dict(matched_state_dict)
         optimizer.load_state_dict(checkpoint['optimizer'])
 
+    print("here")
+    print(optimizer.param_groups[0].keys())
+
+    # print("Param group: ", optimizer.param_groups)
 
     optimizer = OptimLP(optimizer,
                         weight_quant=weight_quantizer,
                         grad_quant=grad_quantizer,
                         momentum_quant=momentum_quantizer,
                         acc_quant=acc_quantizer)
+
+    
 
     # Prepare logging
     columns = ['ep', 'lr', 'tr_loss', 'tr_acc', 'tr_time', 'te_loss', 'te_acc', 'te_time']
