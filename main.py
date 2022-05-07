@@ -252,8 +252,8 @@ if __name__ == "__main__":
         model.load_state_dict(matched_state_dict)
         optimizer.load_state_dict(checkpoint['optimizer'])
 
-    print("here")
-    print(optimizer.param_groups[0].keys())
+    # print("here")
+    # print(optimizer.param_groups[0].keys())
 
     # print("Param group: ", optimizer.param_groups)
 
@@ -270,7 +270,7 @@ if __name__ == "__main__":
 
     for epoch in range(start_epoch, args.epochs):
         
-        print(f"Epoch: {epoch}")
+        # print(f"Epoch: {epoch}")
         time_ep = time.time()
 
         lr = schedule(epoch)

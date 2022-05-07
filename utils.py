@@ -59,15 +59,15 @@ def run_epoch(loader, model, criterion, optimizer=None,
                 # import pdb; pdb.set_trace()
 
                 input = input.to(device=device)
-                print("INF INPUT ", input.isinf().any())
-                print("NAN INPUT ", input.isnan().any())
+                # print("INF INPUT ", input.isinf().any())
+                # print("NAN INPUT ", input.isnan().any())
                 target = target.to(device=device)
                 output = model(input)
-                print("INF OUTPUT ", output.isinf().any())
-                print("NAN OUTPUT ", output.isnan().any())
+                # print("INF OUTPUT ", output.isinf().any())
+                # print("NAN OUTPUT ", output.isnan().any())
                 loss = criterion(output, target)
-                print("INF LOSS ", loss.isinf().any())
-                print("NAN LOSS", loss.isnan().any())
+                # print("INF LOSS ", loss.isinf().any())
+                # print("NAN LOSS", loss.isnan().any())
 
                 loss_sum += loss.cpu().item() * input.size(0)
                 pred = output.data.max(1, keepdim=True)[1]
