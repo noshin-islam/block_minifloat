@@ -33,7 +33,7 @@ if __name__ == "__main__":
     num_types = ["weight", "activate", "error", "acc", "grad", "momentum"]
 
     parser = argparse.ArgumentParser(description='Block Minifloat SGD training')
-    parser.add_argument('--dataset', type=str, default='CIFAR10', choices=['CIFAR10','CIFAR100','IMAGENET'],
+    parser.add_argument('--dataset', type=str, default='CIFAR10', choices=['CIFAR10','CIFAR100','IMAGENET', 'mnist'],
                         help='dataset name: CIFAR10, CIFAR100 or IMAGENET')
     parser.add_argument('--data_path', type=str, default="/opt/datasets/", required=True, metavar='PATH',
                         help='path to datasets location (default: "./data")')
@@ -117,13 +117,13 @@ if __name__ == "__main__":
     # import pdb; pdb.set_trace()
 
     weight_quantizer = quantizer(args.k, forward_number=number_dict["weight"],
-                                forward_rounding=args.weight_rounding)
+                                forward_rounding=args.weight_rounding, txt="weight quant")
     grad_quantizer   = quantizer(args.k, forward_number=number_dict["grad"],
-                                forward_rounding=args.grad_rounding)
+                                forward_rounding=args.grad_rounding, txt="grad quant")
     momentum_quantizer = quantizer(args.k, forward_number=number_dict["momentum"],
-                                forward_rounding=args.momentum_rounding)
+                                forward_rounding=args.momentum_rounding, txt="momentum quant")
     acc_quantizer = quantizer(args.k, forward_number=number_dict["acc"],
-                                forward_rounding=args.acc_rounding)
+                                forward_rounding=args.acc_rounding, txt="acc quant")
 
     # import pdb; pdb.set_trace()
     # this is the model's quantizer. forward and backward quant both set, and entered into the model.
@@ -144,6 +144,7 @@ if __name__ == "__main__":
     if args.dataset=="CIFAR10": num_classes=10
     elif args.dataset=="CIFAR100": num_classes=100
     elif args.dataset=="IMAGENET": num_classes=1000
+    elif args.dataset=="mnist": num_classes=10
 
     if (args.model == "ResNet18LP") or (args.model == "MobileNetV2LP"): 
         model_cfg.kwargs.update({"image_size":224 if args.dataset=="IMAGENET" else 32})

@@ -25,7 +25,7 @@ class BlockMinifloat(Number):
                         supposed to be stored on hardware (not counting the virtual bits).
         - :attr: `tile`: tile dimensions for the shared exponent 
     """
-    def __init__(self, exp, man, tile=-1, flush_to_zero=False, k_exp=0):
+    def __init__(self, exp, man, tile=-1, flush_to_zero=False, k_exp=1):
         assert 8 >= exp >= -1, "invalid bits for exponent:{}".format(exp)
         assert 23 >= man >= -1, "invalid bits for mantissa:{}".format(man)
         self.exp = exp
@@ -36,6 +36,9 @@ class BlockMinifloat(Number):
 
         self.emax = (2**(exp)-1 - 2**(exp-1)) * 2**k_exp
         self.emin = (-2**(exp-1)) * 2**k_exp
+
+        # print("EMAX: ", self.emax)
+        # print("EMIN: ", self.emin)
 
         self.max_number = 2**(self.emax)*(2-2**(-self.man))
         self.flush_to_zero = flush_to_zero

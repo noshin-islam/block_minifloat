@@ -6,3 +6,4 @@ from .vgg_low import *
 from .wideresnet_low import *
 from .preresnet_low import *
 from .test_net import *
+from .mnist_net import *

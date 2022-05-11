@@ -81,14 +81,27 @@ class OptimLP(Optimizer):
             for group in self.param_groups:
                 for p in group['params']:
                     # print(f"p: {len(p)}")
-                    # print(f"p.grad: {len(p.grad)}")                    
-                    p.grad.data = self.grad_quant(p.grad.data*self.grad_scaling)
+                    # print(f"p.grad: {len(p.grad)}")  
+                    var = p.grad.data
+                    sc = self.grad_scaling
+                    # print("p.grad.data: ", var)
+                    # print("scaling: ", sc)
+                    # var1 = self.grad_scaling
+                    # print("VAR: ", var)     
+                    # print("VAR1: ", var1)      
 
+                    pre_quant = p.grad.data*self.grad_scaling  
+                    # print("grad data pre quant: ", pre_quant)    
+                    p.grad.data = self.grad_quant(p.grad.data*self.grad_scaling)
+                    # print("grad data post quant: ", p.grad.data)   
+                    
+        
         # switch acc into weight before stepping
         if not self.acc_quant is None:
             for group in self.param_groups:
                 for p in group['params']:
                     p.data = self.weight_acc[p].data
+                    # print("weights before update and acc quant: ", p.data)
 
         loss = self.optim.step() #updating the weights
 
@@ -101,6 +114,7 @@ class OptimLP(Optimizer):
                 for p in group['params']:
                     p.data = self.weight_acc[p].data = self.acc_quant(p.data).data
                     #this line just quantized the new updated weights (p.data) and then updated that to the weight_acc dict
+                    # print("weights after update and acc quant: ", p.data)
 
 
         # quantize weight from acc
@@ -108,8 +122,9 @@ class OptimLP(Optimizer):
             # print("WEIGHT QUANT OPTIM.PY")
             for group in self.param_groups:
                 for p in group['params']:
-                    # print("optim data: ", p.data)
+                    # print("weight data pre quant: ", p.data)
                     p.data = self.weight_quant(p.data).data
+                    # print("weight data post quant: ", p.data)
 
         # quantize momentum
         if not self.momentum_quant is None:

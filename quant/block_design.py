@@ -20,14 +20,22 @@ def calc_padding(fold, dim):
     return int(p)
 
 # block entire vector
-def block_V(data, ebit, func):
+def block_V(data, ebit, func, k_exp):
     
     entry = func(torch.abs(data), 0) #.item() ----- extracts maximum from each column, but there are no other cols, so its just max w 0
     
     if entry == 0: return data
 
     shift_exponent = torch.floor(torch.log2(entry+1e-28))
-    shift_exponent = torch.clamp(shift_exponent, -2**(ebit-1), 2**(ebit-1)-1)
+
+    min_exp = (-2**(ebit-1)) * 2**k_exp
+    max_exp = (2**(ebit-1)-1) * 2**k_exp
+
+    shift_exponent = torch.clamp(shift_exponent, min_exp, max_exp)
+
+    ####THIS IS THE OLD ONE
+    # shift_exponent = torch.clamp(shift_exponent, -2**(ebit-1), 2**(ebit-1)-1)
+
     return shift_exponent
     #entry = func(torch.abs(data), 0).item()
     #if entry == 0: return data
@@ -39,17 +47,25 @@ def block_V(data, ebit, func):
 # block on axis=0  -- block based on row
 # shift exp returned will have same rows as mantissa but 1 as the other dims as each row of mantissa gets one exp
 
-def block_B(data, ebit, func):
-
-    # print(data)
+def block_B(data, ebit, func, k_exp):
+    print("here from block b")
+    print("data:", data)
     entry = func(torch.abs(data.view(data.size(0), -1)), 1)#[0] ####extracts the maximum value present in each column of data.
+    print("entry: ", entry)
     shift_exponent = torch.floor(torch.log2(entry+1e-28))
-
+    print("shift exp: ", shift_exponent)
     #clamping the shift exponent between the highest representable values eg, -128 to 127 for 8 bit ebit.
-    shift_exponent = torch.clamp(shift_exponent, -2**(ebit-1), 2**(ebit-1)-1)
+    # shift_exponent = torch.clamp(shift_exponent, -2**(ebit-1), 2**(ebit-1)-1)
+
+    min_exp = (-2**(ebit-1)) * 2**k_exp
+    max_exp = (2**(ebit-1)-1) * 2**k_exp
+    print("min: ", min_exp, "max: ", max_exp)
+
+    shift_exponent = torch.clamp(shift_exponent, min_exp, max_exp)
+    print("shift exp post clamp ", shift_exponent)
 
     shift_exponent = shift_exponent.view([data.size(0)]+[1 for _ in range(data.dim()-1)]) #[no. of rows, 1 , 1, 1, 1, 1, 1 .... 1]
-
+    print("shift exp output ", shift_exponent)
     #example shape of shift_exponent -> [64, 1, 1, 1]
     # print("Block B shift exp ", shift_exponent)
     # print("size ", shift_exponent.shape)
@@ -57,17 +73,25 @@ def block_B(data, ebit, func):
     return shift_exponent
 
 # block entire tensor
-def block_B0(data, ebit, func):
+def block_B0(data, ebit, func, k_exp):
     entry = func(torch.abs(data.view(-1)), 0).item()
     if entry == 0: return data
     shift_exponent = math.floor(math.log2(entry))
-    shift_exponent = min(max(shift_exponent, -2**(ebit-1)), 2**(ebit-1)-1)
+
+    ## THIS WORKS
+    # shift_exponent = min(max(shift_exponent, -2**(ebit-1)), 2**(ebit-1)-1)
+
+    min_exp = (-2**(ebit-1)) * 2**k_exp
+    max_exp = (2**(ebit-1)-1) * 2**k_exp
+    shift_exponent = min(max(shift_exponent, min_exp), max_exp)
+    
+
     return shift_exponent
 
 
 #"""
 # block by some factor on axis=0,1 (dim=2)
-def block_BG2(data, factors, ebit, func):
+def block_BG2(data, factors, ebit, func, k_exp):
     dim = data.size()
     assert len(dim) == 2
 
@@ -88,7 +112,13 @@ def block_BG2(data, factors, ebit, func):
     tiles = data_f.size()[:2]
     mean_entry = func(torch.abs(data_f), 2) #[0]
     shift_exponent = torch.floor(torch.log2(mean_entry+1e-28))
-    shift_exponent = torch.clamp(shift_exponent, -2**(ebit-1), 2**(ebit-1)-1)
+
+    ### THIS WORKS
+    # shift_exponent = torch.clamp(shift_exponent, -2**(ebit-1), 2**(ebit-1)-1)
+
+    min_exp = (-2**(ebit-1)) * 2**k_exp
+    max_exp = (2**(ebit-1)-1) * 2**k_exp
+    shift_exponent = torch.clamp(shift_exponent, min_exp, max_exp)
 
     # reverse the unfold
     shift_exponent = shift_exponent.repeat(fact[0],fact[1])
@@ -103,12 +133,12 @@ def block_BG2(data, factors, ebit, func):
 
 
 # block by some factor on axis=0,1,2 (data_dim=4)
-def block_BG4(data, factors, ebit, func):
+def block_BG4(data, factors, ebit, func, k_exp):
 
     # import pdb; pdb.set_trace()
 
     _dim = data.size()
-    assert len(_dim) == 4 
+    assert len(_dim) == 4
     
     # always fold last two dims (in BCHW order)
     data = data.view([_dim[0], _dim[1], -1])
@@ -129,7 +159,12 @@ def block_BG4(data, factors, ebit, func):
     tiles = data_f.size()[:3]
     mean_entry = func(torch.abs(data_f), 3)#[0]
     shift_exponent = torch.floor(torch.log2(mean_entry+1e-28))
-    shift_exponent = torch.clamp(shift_exponent, -2**(ebit-1), 2**(ebit-1)-1)
+
+    # shift_exponent = torch.clamp(shift_exponent, -2**(ebit-1), 2**(ebit-1)-1)
+
+    min_exp = (-2**(ebit-1)) * 2**k_exp
+    max_exp = (2**(ebit-1)-1) * 2**k_exp
+    shift_exponent = torch.clamp(shift_exponent, min_exp, max_exp)
 
     # reverse the unfold
     shift_exponent = shift_exponent.repeat(fact[0],fact[1],fact[2])
@@ -146,7 +181,7 @@ def block_BG4(data, factors, ebit, func):
     return shift_exponent
 
 
-def block_BFP(data, ebit, tensor_type, block_factor, func):
+def block_BFP(data, ebit, tensor_type, block_factor, func, k_exp):
     data_dim = data.dim()
 
     # block_factor = tile
@@ -171,14 +206,14 @@ def block_BFP(data, ebit, tensor_type, block_factor, func):
 
     if data_dim == 2:
         if data.size()[1]<block_factor:
-            shift_exponent = block_B(data, ebit, func)
+            shift_exponent = block_B(data, ebit, func, k_exp)
         else:
-            shift_exponent = block_BG2(data, [p0,p1], ebit, func)
+            shift_exponent = block_BG2(data, [p0,p1], ebit, func, k_exp)
     elif data_dim == 4:
         if data.size()[1]<block_factor:
-            shift_exponent = block_B(data, ebit, func)
+            shift_exponent = block_B(data, ebit, func, k_exp)
         else:
-            shift_exponent = block_BG4(data, [p0,p1,p2], ebit, func) 
+            shift_exponent = block_BG4(data, [p0,p1,p2], ebit, func, k_exp) 
     else:
         raise ValueError("Invalid data_dim option {}".format(data_dim)) 
     
@@ -195,30 +230,45 @@ def block_design(data, tile, tensor_type, func, k):
     dim_threshold = 1
     ebit = 8  #exponent bits??
     # import pdb; pdb.set_trace()
+    # shift_exponent = 0
     if tile == -1:
         if data.dim() <= dim_threshold:
-            shift_exponent = block_V(data, ebit, func)
+            shift_exponent = block_V(data, ebit, func, k)
         else:
-            shift_exponent = block_B(data, ebit, func)
+            shift_exponent = block_B(data, ebit, func, k)
 
         if (k != 0):
+            # print("max exp pre scaling: ", shift_exponent)
+            # print("k used for scaling: ", k)
+            # print("2^k used for scaling: ", 2**k)
             shift_exponent = shift_exponent * (2**k)
+            # print("max exp post scaling: ", shift_exponent)
 
     elif tile == 0:
-        shift_exponent = block_B0(data, ebit, func)
+        shift_exponent = block_B0(data, ebit, func, k)
         if (k != 0):
+            # print("max exp pre scaling: ", shift_exponent)
+            # print("k used for scaling: ", k)
+            # print("2^k used for scaling: ", 2**k)
             shift_exponent = shift_exponent * (2**k)
+            # print("max exp post scaling: ", shift_exponent)
 
     else:
         if data.dim() <= dim_threshold:
-            shift_exponent = block_V(data, ebit, func)
+            shift_exponent = block_V(data, ebit, func, k)
             # if (k != 0):
             #     shift_exponent = shift_exponent * (2**k)
         else:
-            shift_exponent = block_BFP(data, ebit, tensor_type, tile, func)
+            shift_exponent = block_BFP(data, ebit, tensor_type, tile, func, k)
         # print("without exponent scaling: ", shift_exponent)
         if (k != 0):
+            # print("max exp pre scaling: ", shift_exponent)
+            # print("k used for scaling: ", k)
+            # print("2^k used for scaling: ", 2**k)
+            print("exp pre scale: ", shift_exponent)
             shift_exponent = shift_exponent * (2**k)
+            print("exp post scale: ", shift_exponent)
+            # print("max exp post scaling: ", shift_exponent)
             # print("with exponent scaling: ", shift_exponent)
 
     return shift_exponent

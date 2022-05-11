@@ -54,7 +54,7 @@ def run_epoch(loader, model, criterion, optimizer=None,
 
     ttl = 0
     with torch.autograd.set_grad_enabled(phase=="train"):
-        with torch.autograd.detect_anomaly():
+        # with torch.autograd.detect_anomaly():
             for i, (input, target) in enumerate(loader):
                 # import pdb; pdb.set_trace()
 
@@ -65,18 +65,28 @@ def run_epoch(loader, model, criterion, optimizer=None,
                 output = model(input)
                 # print("INF OUTPUT ", output.isinf().any())
                 # print("NAN OUTPUT ", output.isnan().any())
+
                 loss = criterion(output, target)
                 # print("INF LOSS ", loss.isinf().any())
                 # print("NAN LOSS", loss.isnan().any())
 
-                loss_sum += loss.cpu().item() * input.size(0)
-                pred = output.data.max(1, keepdim=True)[1]
-                correct += pred.eq(target.data.view_as(pred)).sum()
-                ttl += input.size()[0]
 
+                loss_sum += loss.cpu().item() * input.size(0)
+
+                pred = output.data.max(1, keepdim=True)[1]
+
+                correct += pred.eq(target.data.view_as(pred)).sum()
+
+                ttl += input.size()[0]
+                
                 if phase=="train":
                     optimizer.zero_grad()
+                    # print(loss.gradient)
                     loss.backward()
+                    # for name, param in model.named_parameters():
+                    #     print(name, torch.isfinite(param.grad).all())
+                    # exit()
+            
                     optimizer.step()
 
     correct = correct.cpu().item()
