@@ -132,6 +132,8 @@ if __name__ == "__main__":
     acc_err_quant = lambda : Quantizer(args.k, number_dict["activate"], number_dict["error"],
                                         args.activate_rounding, args.error_rounding)
 
+    # acc_err_quant = lambda : Quantizer(args.k, forward_number=number_dict["activate"], forward_rounding=args.activate_rounding)
+
     #remove backward quant   -
     # acc_err_quant = lambda : Quantizer(forward_number=number_dict["activate"],
     #                                     forward_rounding=args.activate_rounding)
@@ -180,6 +182,20 @@ if __name__ == "__main__":
         # print(layer)
         # print("num ", i)
         # i += 1
+    def optimizer_to(optim, device):
+    # move optimizer to device
+        for param in optim.state.values():
+            # Not sure there are any global tensors in the state dict
+            if isinstance(param, torch.Tensor):
+                param.data = param.data.to(device)
+                if param._grad is not None:
+                    param._grad.data = param._grad.data.to(device)
+            elif isinstance(param, dict):
+                for subparam in param.values():
+                    if isinstance(subparam, torch.Tensor):
+                        subparam.data = subparam.data.to(device)
+                        if subparam._grad is not None:
+                            subparam._grad.data = subparam._grad.data.to(device)
 
     def count_parameters(model):
         table = PrettyTable(["Modules", "Parameters"])
@@ -238,6 +254,7 @@ if __name__ == "__main__":
                     lr=args.lr_init,
                     momentum=0.9,
                     weight_decay=args.wd)
+    # optimizer_to(optimizer, device)
 
     # resume training
     start_epoch = 0

@@ -77,12 +77,12 @@ def block_minifloat_quantize(x, number, rounding="stochastic", tensor_type="x", 
         # number.emax = number.emax 
         offset = max_exponent - number.emax
         print("offset: ", offset)
-        print("offset shape: ", offset.shape)
+        # print("offset shape: ", offset.shape)
         # shared exponent shifting
-        a = torch.tensor([2])
-        shift = a**(-offset)
+        # a = torch.tensor([2])
+        shift = 2**(-offset)
         i = x * shift
-        print("data * 2^offset: ", i)
+        print("data * 2^-offset: ", i)
 
         # clamping at zero (uses QPyTorch float_quantizer - qtorch doesn't have a zero bit?)
         if (number.flush_to_zero):
@@ -112,16 +112,19 @@ def block_minifloat_quantize(x, number, rounding="stochastic", tensor_type="x", 
 
         sgn = torch.sign(i)
         i = torch.abs(i)
-        e = torch.floor(torch.log2(i+1e-60))
+        print("i: ", i)
+        # e = torch.floor(torch.log2(i+1e-60))
+        e = torch.floor(torch.log2(i+1e-30))
         print("exp pre clamping: ", e)
         # clamp the exponent
         e.clamp_(emin+1, emax) # emin+1 for subnormal region
         print("exp post clamping: ", e)
+        # exit()
         # unpack frac for subnormal and normal region
         ie = i*2**(-e)
         me = 2**(e)
         f = torch.where(i<esbn, ie, ie-1)
-        # print("f pre rounding: ", f)
+        print("f pre rounding: ", f)
 
 
         # rounding on frac
@@ -130,11 +133,13 @@ def block_minifloat_quantize(x, number, rounding="stochastic", tensor_type="x", 
             f.mul_(mval).add_(r).floor_()
             clipped = f.clamp_(0, mval)
             clipped.div_(mval).mul_(me)
-            # print("f post rounding: ", clipped)
+            print("f post rounding: ", clipped)
         else:
             f.mul_(mval).round_()
             clipped.div_(mval).mul_(me)
         # sign magnitude multiplication for subnormal and normal
+        print("me+clipped ", me+clipped)
+        print("clipped ", clipped)
         k = torch.where(i<esbn, clipped, me+clipped)
         print("mantissa pre clamp: ", k)
         k.clamp_(-rlim, rlim)
@@ -142,10 +147,13 @@ def block_minifloat_quantize(x, number, rounding="stochastic", tensor_type="x", 
         # print("offset: ", offset)
         # print("Sign: ", sgn)
         out = sgn * k * 2**(offset)
+        if out.isnan().any():
+            print("nan found!!!!")
+            exit()
         print("Quant output: ", out)
-        print("")
-        print("")
-        print("")
+        # print("")
+        # print("")
+        # print("")
         # print("")
         # print("")
         # print("")
@@ -219,32 +227,3 @@ def quantizer(k, forward_number=None, backward_number=None,
             return grad_input.clone()
 
     return Rounding.apply
-
-
-###TO DO - make a layerwise_weight_quant() function, that will follow the pseudocode and do the layer wise quantisation. Instead of reduced_precision_converter function, I will call the quantizer function, to convert to lower precision.
-
-# def layerwise_quant(model, forward_number=None, backward_number=None,
-#               forward_rounding="stochastic", backward_rounding="stochastic",
-#               clamping_grad_zero=False, backward_hooks=[]):
-#     for layer in model.modules():
-#         if isinstance(layer, nn.Conv2d):
-#             #for convolution layers - let's try BM6
-#             print("Conv layer detected")
-#             # print(layer.weight)
-#             layer_weight = layer.weight
-#             bm_quant = BlockMinifloat(exp=2, man=3, tile=48, flush_to_zero= False)  #BM6
-#             quant_func = quantizer(forward_number= bm_quant, forward_rounding= "stochastic")
-
-#         # elif isinstance(layer, nn.MaxPool2d):
-#         #     print("Maxpool detected")
-#         # elif isinstance(layer, nn.ReLU):
-#         #     print("ReLu detected")
-#         # elif isinstance(layer, nn.Linear):
-#         #     print("Linear detected")
-#         elif isinstance(layer, nn.Dropout) or isinstance(layer, nn.ReLU) or isinstance(layer, nn.Linear):
-#             print("Fully Connected Layer detected")
-#         # elif isinstance(layer, nn.BatchNorm2d):
-#         #     print("Batchnorm2d detected")
-#         else:
-#             print("nope")
-#     return 

@@ -12,6 +12,7 @@ class Number:
         raise NotImplemented
 
 class BlockMinifloat(Number):
+
     """
     Low-Precision Block Minifloat (BM) Format.
 
@@ -25,7 +26,8 @@ class BlockMinifloat(Number):
                         supposed to be stored on hardware (not counting the virtual bits).
         - :attr: `tile`: tile dimensions for the shared exponent 
     """
-    def __init__(self, exp, man, tile=-1, flush_to_zero=False, k_exp=1):
+
+    def __init__(self, exp, man, tile=-1, flush_to_zero=False, k_exp=0):
         assert 8 >= exp >= -1, "invalid bits for exponent:{}".format(exp)
         assert 23 >= man >= -1, "invalid bits for mantissa:{}".format(man)
         self.exp = exp

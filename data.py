@@ -51,7 +51,7 @@ def get_data(dataset, data_path, batch_size):
         # valdir = '/MNIST/val'
         # normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
         #                                  std=[0.229, 0.224, 0.225])
-        IMAGE_SIZE = 4
+        IMAGE_SIZE = 20
         #Generates an object to store multiple transformations
 
         transform = transforms.Compose([transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)), transforms.ToTensor()])

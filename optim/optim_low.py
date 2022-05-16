@@ -101,7 +101,6 @@ class OptimLP(Optimizer):
             for group in self.param_groups:
                 for p in group['params']:
                     p.data = self.weight_acc[p].data
-                    # print("weights before update and acc quant: ", p.data)
 
         loss = self.optim.step() #updating the weights
 
@@ -113,6 +112,7 @@ class OptimLP(Optimizer):
             for group in self.param_groups:
                 for p in group['params']:
                     p.data = self.weight_acc[p].data = self.acc_quant(p.data).data
+
                     #this line just quantized the new updated weights (p.data) and then updated that to the weight_acc dict
                     # print("weights after update and acc quant: ", p.data)
 

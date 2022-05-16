@@ -53,8 +53,11 @@ def run_epoch(loader, model, criterion, optimizer=None,
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     ttl = 0
+    n = 0
+    # print("New epoch")
     with torch.autograd.set_grad_enabled(phase=="train"):
         # with torch.autograd.detect_anomaly():
+        
             for i, (input, target) in enumerate(loader):
                 # import pdb; pdb.set_trace()
 
@@ -69,9 +72,10 @@ def run_epoch(loader, model, criterion, optimizer=None,
                 loss = criterion(output, target)
                 # print("INF LOSS ", loss.isinf().any())
                 # print("NAN LOSS", loss.isnan().any())
-
+                # print("loss: ", loss)
 
                 loss_sum += loss.cpu().item() * input.size(0)
+                n+=1
 
                 pred = output.data.max(1, keepdim=True)[1]
 
@@ -82,14 +86,23 @@ def run_epoch(loader, model, criterion, optimizer=None,
                 if phase=="train":
                     optimizer.zero_grad()
                     # print(loss.gradient)
+
+                    a = list(model.parameters())[0].clone()
+                    # print("a: ", a)
                     loss.backward()
+
                     # for name, param in model.named_parameters():
                     #     print(name, torch.isfinite(param.grad).all())
                     # exit()
             
                     optimizer.step()
 
+                    b = list(model.parameters())[0].clone()
+                    # print("b: ", b)
+                    # print(torch.equal(a.data, b.data))
+
     correct = correct.cpu().item()
+    # print("Loss at the end of epoch: ", loss_sum/float(ttl))
     return {
         'loss': loss_sum / float(ttl),
         'accuracy': correct / float(ttl) * 100.0,

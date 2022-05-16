@@ -20,28 +20,23 @@ from quant import *
 # from prettytable import PrettyTable
 import sys
 
-# parser = argparse.ArgumentParser(description='Block Minifloat SGD training')
+a = torch.tensor([[[[0.0078, 0.1765, 0.1922, 0.0078],
+          [0.0314, 0.1412, 0.3294, 0.0392],
+          [0.0314, 0.3529, 0.4667, 0.0510],
+          [0.0196, 0.1490, 0.1608, 0.0706]]]])
 
-# parser.add_argument('--model', type=str, default="ResNet18LP", required=True, metavar='MODEL',
-#                         help='model name (default: ResNet18LP)')
+print(a.shape)
 
+b = torch.zeros(a.shape)
+c = torch.zeros(a.shape)
+print(c)
 
-x = torch.from_numpy(np.arange(1, 17).reshape(4,4))
-print(x)
-
-k=0
-x_bm = BlockMinifloat(exp=2, man=5, tile=0, flush_to_zero=False)
-print(x_bm.emax)
-print(x_bm.emin)
-print(x_bm.max_number)
-
-x_quantizer = quantizer(k, forward_number=x_bm, forward_rounding='stochastic')
-print(x_quantizer)
-
-data = x_quantizer(x)
-
-data2 = block_minifloat_quantize(x, x_bm, rounding="stochastic", tensor_type="x", k_exp=0)
-print(data)
-print(data2)
-
- 
+# if (torch.eq(a,b)):
+#     print("hi")
+# print(b.shape)
+# print(torch.eq(a,b))
+# print(torch.unique(a[a == b], return_counts=True))
+_, count = (torch.unique(b[c == b], return_counts=True))
+print(torch.numel(a))
+if (count == torch.numel(a)):
+    print("hi")
