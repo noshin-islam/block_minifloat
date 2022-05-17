@@ -27,7 +27,7 @@ class BlockMinifloat(Number):
         - :attr: `tile`: tile dimensions for the shared exponent 
     """
 
-    def __init__(self, exp, man, tile=-1, flush_to_zero=False, k_exp=0):
+    def __init__(self, exp, man, tile=-1, flush_to_zero=False, k_exp=1):
         assert 8 >= exp >= -1, "invalid bits for exponent:{}".format(exp)
         assert 23 >= man >= -1, "invalid bits for mantissa:{}".format(man)
         self.exp = exp

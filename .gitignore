@@ -21,3 +21,6 @@ CIFAR10/**
 
 MNIST/**
 logs/**
+quant/copy_of_quant.py
+quant/faulty_cp_bd.py
+quant/safe_copy_bd.py

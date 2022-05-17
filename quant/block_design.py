@@ -53,7 +53,7 @@ def block_V(data, ebit, func, k_exp):
 
 def block_B(data, ebit, func, k_exp):
 
-    print("here from block b")
+    # print("here from block b")
     # print("data:", data)
     entry = func(torch.abs(data.view(data.size(0), -1)), 1)#[0] ####extracts the maximum value present in each column of data.
     # print("entry: ", entry)
@@ -64,14 +64,14 @@ def block_B(data, ebit, func, k_exp):
     # print(torch.numel(a))
     # print(count)
     if (count.nelement() != 0 and count >= torch.numel(data)/2):
-        print("0 tensor detected!")
+        # print("0 tensor detected!")
         shift_exponent = torch.floor(torch.log2(entry+1e-10))
         # return data
     else:
         shift_exponent = torch.floor(torch.log2(entry+1e-28))
 
     
-    print("shift exp: ", shift_exponent)
+    # print("shift exp: ", shift_exponent)
     # print("shift exp old: ", shift_exponent_old)
     
     #clamping the shift exponent between the highest representable values eg, -128 to 127 for 8 bit ebit.
@@ -79,10 +79,10 @@ def block_B(data, ebit, func, k_exp):
 
     min_exp = (-2**(ebit-1)) 
     max_exp = (2**(ebit-1)-1) 
-    print("min: ", min_exp, "max: ", max_exp)
+    # print("min: ", min_exp, "max: ", max_exp)
 
     shift_exponent = torch.clamp(shift_exponent, min_exp, max_exp)
-    print("shift exp post clamp ", shift_exponent)
+    # print("shift exp post clamp ", shift_exponent)
 
     shift_exponent = shift_exponent.view([data.size(0)]+[1 for _ in range(data.dim()-1)]) #[no. of rows, 1 , 1, 1, 1, 1, 1 .... 1]
     # print("shift exp output ", shift_exponent)
@@ -295,9 +295,9 @@ def block_design(data, tile, tensor_type, func, k):
     dim_threshold = 1
 
     if (k==0):
-      ebit = 8
+      ebit = 3
     else:
-      ebit = 8  #exponent bits??
+      ebit = 3  #exponent bits??
 
     # ebit = 2  #exponent bits??
     # import pdb; pdb.set_trace()
@@ -343,9 +343,3 @@ def block_design(data, tile, tensor_type, func, k):
             # print("with exponent scaling: ", shift_exponent)
 
     return shift_exponent
-
-
-
-
-
- 
